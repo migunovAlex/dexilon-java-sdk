@@ -202,7 +202,6 @@ public class DexilonClientImpl {
     public Optional<OrderInfo> cancelOrder(String symbol, @Nullable  Long orderId, @Nullable String clientOrderId) {
         checkAuthIsOk();
 
-
         try {
             UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(apiUrl + "/orders");
             Map<String, Object> params = new HashMap<>();
@@ -230,6 +229,11 @@ public class DexilonClientImpl {
         }
 
         return Optional.empty();
+    }
+
+    public List<OrderInfo> cancelAllOpenOrders() {
+        Optional<OrderInfo[]> canceledOrders = requestWithAuth(null, HttpMethod.DELETE, "/orders/all", OrderInfo[].class);
+        return canceledOrders.map(Arrays::asList).orElseGet(List::of);
     }
 
     public Optional<LeverageUpdateResponse> setLeverage(String symbol, Integer leverage) {

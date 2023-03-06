@@ -9,7 +9,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class AuthenticationTest extends ITTestBase {
+public class AuthenticationITTest extends ITTestBase {
 
     @Test
     public void shouldThrowExceptionTryingToCallCosmosMappingMethodWithoutCreds() {

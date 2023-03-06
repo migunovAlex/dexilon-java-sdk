@@ -9,7 +9,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class TradingITTest {
+class PublicEndpointsITTest {
 
     private final DexilonClientImpl testInstance = new DexilonClientImpl();
 

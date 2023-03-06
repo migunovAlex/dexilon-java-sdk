@@ -5,8 +5,11 @@ import com.migal.trading.dexilon.client.models.*;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -84,6 +87,18 @@ public class TradingFunctionalityITTest extends ITTestBase {
     }
 
     @Test
+    public void shouldCancelAllOpenedOrders() {
+        LimitOrderRequest limitOrderRequest = new LimitOrderRequest(UUID.randomUUID().toString(), "eth_usdt", "SELL", BigDecimal.valueOf(0.1), BigDecimal.valueOf(1750.00));
+        Optional<OrderInfo> limitOrderResponse = testInstance.submitLimitOrder(limitOrderRequest);
+
+        assertTrue(limitOrderResponse.isPresent());
+
+        List<OrderInfo> canceledOrders = testInstance.cancelAllOpenOrders();
+        Set<Long> canceledOrderIds = canceledOrders.stream().map(OrderInfo::getOrderId).collect(Collectors.toSet());
+        assertTrue(canceledOrderIds.contains(limitOrderResponse.get().getOrderId()));
+    }
+
+    @Test
     public void shouldGetAccountInfo() {
         Optional<AccountInfoResponse> accountInfo = testInstance.getAccountInfo();
         assertTrue(accountInfo.isPresent());
@@ -91,7 +106,7 @@ public class TradingFunctionalityITTest extends ITTestBase {
 
     @Test
     public void shouldSetLeverageSuccessfully() {
-        Optional<LeverageUpdateResponse> leverageResponse = testInstance.setLeverage("eth_usdt", 5);
+        Optional<LeverageUpdateResponse> leverageResponse = testInstance.setLeverage("sol_usdt", 5);
         assertTrue(leverageResponse.isPresent());
         Integer leverage = leverageResponse.get().getLeverage();
         assertEquals(Integer.valueOf(5), leverage);
