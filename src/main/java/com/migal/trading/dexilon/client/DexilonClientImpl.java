@@ -5,19 +5,24 @@ import com.migal.trading.dexilon.client.models.*;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.web3j.crypto.ECKeyPair;
 import org.web3j.crypto.Hash;
 import org.web3j.crypto.Sign;
 import org.web3j.utils.Numeric;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 public class DexilonClientImpl {
 
     private static final String DEXILON_BLOCKCHAIN_CONTEXT = "/dexilon-exchange/dexilonl2/";
+    private static final int AUTH_TOKEN_EXPIRATION_TIMEOUT_IN_MINUTES = 10;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -28,6 +33,10 @@ public class DexilonClientImpl {
     private final Optional<String> privateKey;
 
     private HttpHeaders headers = new HttpHeaders();
+
+    private boolean isAuthenticated;
+    private String refreshToken;
+    private LocalDateTime lastAuthenticationAttemptTime;
 
     public DexilonClientImpl() {
         this.ethAddress = Optional.empty();
@@ -107,7 +116,16 @@ public class DexilonClientImpl {
             HttpEntity<AuthenticationRequest> httpEntity = new HttpEntity<>(new AuthenticationRequest(ethAddress.get(), nonce, signedMessage), headers);
             ResponseEntity<AuthenticationResponse> result = restTemplate.postForEntity(apiUrl + "/auth/accessToken", httpEntity, AuthenticationResponse.class);
             if (result.getStatusCode().equals(HttpStatus.OK)) {
-                return Optional.ofNullable(result.getBody());
+                isAuthenticated = true;
+                AuthenticationResponse authenticationResponse = result.getBody();
+                if (authenticationResponse != null) {
+                    this.refreshToken = authenticationResponse.getRefreshToken();
+                    this.lastAuthenticationAttemptTime = LocalDateTime.now();
+                    headers.add("Authorization", "Bearer " + authenticationResponse.getAccessToken());
+                    headers.add("CosmosAddress", cosmosAddressMapping.get().getAddressMapping().getCosmosAddress());
+                    return Optional.ofNullable(result.getBody());
+                }
+                return Optional.empty();
             }
             throw new DexilonApiException("Error code returned on authentication request: " + result.getStatusCode());
         } catch (Exception e) {
@@ -121,8 +139,7 @@ public class DexilonClientImpl {
 
     private String generateNonce(String dexilonAddress) {
         long currentMilliseconds = ZonedDateTime.now().toInstant().toEpochMilli();
-//        return currentMilliseconds + "#" + dexilonAddress;
-        return 1000 + "#" + dexilonAddress;
+        return currentMilliseconds + "#" + dexilonAddress;
     }
 
     byte[] bytesFromSignature(Sign.SignatureData signature)
@@ -147,5 +164,95 @@ public class DexilonClientImpl {
         if (ethAddress.isEmpty() || privateKey.isEmpty()) {
             throw new DexilonApiException("You are trying to call method which suppose to have ethAddress and private key initialized");
         }
+    }
+
+    public Optional<OrderInfo> submitMarketOrder(MarketOrderRequest marketOrderRequest) {
+        return requestWithAuth(marketOrderRequest, HttpMethod.POST, "orders/market", OrderInfo.class);
+    }
+
+    public Optional<OrderInfo> submitLimitOrder(LimitOrderRequest limitOrderRequest) {
+        return requestWithAuth(limitOrderRequest, HttpMethod.POST, "/orders/limit", OrderInfo.class);
+    }
+
+    private void checkAuthIsOk() {
+        if(!isAuthenticated) {
+            Optional<AuthenticationResponse> authenticate = authenticate();
+            if (authenticate.isEmpty()) {
+                throw new DexilonApiException("You are not authorized to use this endpoint");
+            }
+        } else {
+            if (!checkTokenIsNotExpiredOrRefresh()) {
+                throw new DexilonApiException("Authorization token has been expired and was not able to successfully refresh it");
+            }
+        }
+    }
+
+    private boolean checkTokenIsNotExpiredOrRefresh() {
+        long minutes = ChronoUnit.MINUTES.between(lastAuthenticationAttemptTime, LocalDateTime.now());
+        if (minutes < AUTH_TOKEN_EXPIRATION_TIMEOUT_IN_MINUTES) return true;
+        return refreshToken();
+    }
+
+    private boolean refreshToken() {
+
+        //TODO refresh token and update header
+        return true;
+    }
+
+    public Optional<OrderInfo> cancelOrder(String symbol, @Nullable  Long orderId, @Nullable String clientOrderId) {
+        checkAuthIsOk();
+
+
+        try {
+            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(apiUrl + "/orders");
+            Map<String, Object> params = new HashMap<>();
+
+            uriComponentsBuilder.queryParam("symbol", "{symbol}");
+            params.put("symbol", symbol);
+
+            if (orderId != null) {
+                uriComponentsBuilder.queryParam("orderId", "{orderId}");
+                params.put("orderId", orderId);
+            }
+            if (clientOrderId != null) {
+                uriComponentsBuilder.queryParam("clientOrderId", "{clientOrderId}");
+                params.put("clientOrderId", clientOrderId);
+            }
+
+            String requestUrl = uriComponentsBuilder.encode().toUriString();
+            HttpEntity<MarketOrderRequest> httpEntity = new HttpEntity<>(null, headers);
+            ResponseEntity<OrderInfo> response = restTemplate.exchange(requestUrl, HttpMethod.DELETE, httpEntity, OrderInfo.class, params);
+            if (response.getStatusCode() == HttpStatus.OK) {
+                return Optional.ofNullable(response.getBody());
+            }
+        } catch (Exception e) {
+            throw new DexilonApiException(e.getMessage());
+        }
+
+        return Optional.empty();
+    }
+
+    public Optional<LeverageUpdateResponse> setLeverage(String symbol, Integer leverage) {
+        LeverageUpdateRequest leverageUpdateRequest = LeverageUpdateRequest.builder().symbol(symbol).leverage(leverage).build();
+        return requestWithAuth(leverageUpdateRequest, HttpMethod.PUT, "/accounts/leverage", LeverageUpdateResponse.class);
+    }
+
+    public Optional<AccountInfoResponse> getAccountInfo() {
+        return requestWithAuth(null, HttpMethod.GET, "/accounts", AccountInfoResponse.class);
+    }
+
+    private<T, I> Optional<T> requestWithAuth(I requestObject, HttpMethod method, String path, Class<T> responseClass) {
+        checkAuthIsOk();
+
+        try{
+            HttpEntity<I> httpEntity = new HttpEntity<>(requestObject, headers);
+            ResponseEntity<T> response = restTemplate.exchange(apiUrl + path, method, httpEntity, responseClass);
+            if (response.getStatusCode() == HttpStatus.OK) {
+                return Optional.ofNullable(response.getBody());
+            }
+        } catch(Exception e) {
+            throw new DexilonApiException(e.getMessage());
+        }
+        return Optional.empty();
     }
 }
