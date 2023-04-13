@@ -7,7 +7,7 @@ public class ITTestBase {
     static String testMetamaskAddress;
     static String testPrivateKey;
 
-    DexilonClientImpl testInstance = new DexilonClientImpl(testMetamaskAddress, testPrivateKey);
+    DexilonClientImplOld testInstance = new DexilonClientImplOld(testMetamaskAddress, testPrivateKey);
 
     @BeforeAll
     public static void setUp() {

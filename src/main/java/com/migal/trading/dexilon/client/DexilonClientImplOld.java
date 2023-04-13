@@ -19,7 +19,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
-public class DexilonClientImpl {
+public class DexilonClientImplOld {
 
     private static final String DEXILON_BLOCKCHAIN_CONTEXT = "/dexilon-exchange/dexilonl2/";
     private static final int AUTH_TOKEN_EXPIRATION_TIMEOUT_IN_MINUTES = 10;
@@ -38,19 +38,19 @@ public class DexilonClientImpl {
     private String refreshToken;
     private LocalDateTime lastAuthenticationAttemptTime;
 
-    public DexilonClientImpl() {
+    public DexilonClientImplOld() {
         this.ethAddress = Optional.empty();
         this.privateKey = Optional.empty();
         configureRestTemplate();
     }
 
-    public DexilonClientImpl(String ethAddress, String privateKey) {
+    public DexilonClientImplOld(String ethAddress, String privateKey) {
         this.ethAddress = Optional.ofNullable(ethAddress);
         this.privateKey = Optional.ofNullable(privateKey);
         configureRestTemplate();
     }
 
-    public DexilonClientImpl(String apiUrl, String dexilonChainUrl, String ethAddress, String privateKey) {
+    public DexilonClientImplOld(String apiUrl, String dexilonChainUrl, String ethAddress, String privateKey) {
         this.ethAddress = Optional.ofNullable(ethAddress);
         this.privateKey = Optional.ofNullable(privateKey);
         this.apiUrl = apiUrl;
@@ -105,7 +105,7 @@ public class DexilonClientImpl {
             throw new DexilonApiException("Was not able to receive Dexilon address mapping for provided eth address");
         }
 
-        String nonce = generateNonce(cosmosAddressMapping.get().getAddressMapping().getCosmosAddress());
+        String nonce = generateNonce(cosmosAddressMapping.get().addressMapping().cosmosAddress());
         byte[] keccakNonce = hashWithKeccak(nonce);
         ECKeyPair ecKeyPair = ECKeyPair.create(Numeric.toBigInt(privateKey.get()));
         Sign.SignatureData signature = Sign.signPrefixedMessage(keccakNonce, ecKeyPair);
@@ -119,10 +119,10 @@ public class DexilonClientImpl {
                 isAuthenticated = true;
                 AuthenticationResponse authenticationResponse = result.getBody();
                 if (authenticationResponse != null) {
-                    this.refreshToken = authenticationResponse.getRefreshToken();
+                    this.refreshToken = authenticationResponse.refreshToken();
                     this.lastAuthenticationAttemptTime = LocalDateTime.now();
-                    headers.add("Authorization", "Bearer " + authenticationResponse.getAccessToken());
-                    headers.add("CosmosAddress", cosmosAddressMapping.get().getAddressMapping().getCosmosAddress());
+                    headers.add("Authorization", "Bearer " + authenticationResponse.accessToken());
+                    headers.add("CosmosAddress", cosmosAddressMapping.get().addressMapping().cosmosAddress());
                     return Optional.ofNullable(result.getBody());
                 }
                 return Optional.empty();
@@ -237,7 +237,7 @@ public class DexilonClientImpl {
     }
 
     public Optional<LeverageUpdateResponse> setLeverage(String symbol, Integer leverage) {
-        LeverageUpdateRequest leverageUpdateRequest = LeverageUpdateRequest.builder().symbol(symbol).leverage(leverage).build();
+        LeverageUpdateRequest leverageUpdateRequest = new LeverageUpdateRequest(symbol, leverage);
         return requestWithAuth(leverageUpdateRequest, HttpMethod.PUT, "/accounts/leverage", LeverageUpdateResponse.class);
     }
 

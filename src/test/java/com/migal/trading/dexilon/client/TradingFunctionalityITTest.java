@@ -29,7 +29,7 @@ public class TradingFunctionalityITTest extends ITTestBase {
         LimitOrderRequest limitOrderRequest = new LimitOrderRequest(UUID.randomUUID().toString(), "eth_usdt", "SELL", BigDecimal.valueOf(0.1), BigDecimal.valueOf(1750.00));
         Optional<OrderInfo> response = testInstance.submitLimitOrder(limitOrderRequest);
         assertTrue(response.isPresent());
-        assertNotNull(response.get().getPrice());
+        assertNotNull(response.get().price());
     }
 
     @Test
@@ -77,13 +77,13 @@ public class TradingFunctionalityITTest extends ITTestBase {
 
         assertTrue(response.isPresent());
 
-        Long orderId = response.get().getOrderId();
+        Long orderId = response.get().orderId();
 
         Optional<OrderInfo> cancelOrderResult = testInstance.cancelOrder("eth_usdt", orderId, null);
 
         assertTrue(cancelOrderResult.isPresent());
 
-        assertEquals("CANCELED", cancelOrderResult.get().getStatus());
+        assertEquals("CANCELED", cancelOrderResult.get().status());
     }
 
     @Test
@@ -94,8 +94,8 @@ public class TradingFunctionalityITTest extends ITTestBase {
         assertTrue(limitOrderResponse.isPresent());
 
         List<OrderInfo> canceledOrders = testInstance.cancelAllOpenOrders();
-        Set<Long> canceledOrderIds = canceledOrders.stream().map(OrderInfo::getOrderId).collect(Collectors.toSet());
-        assertTrue(canceledOrderIds.contains(limitOrderResponse.get().getOrderId()));
+        Set<Long> canceledOrderIds = canceledOrders.stream().map(OrderInfo::orderId).collect(Collectors.toSet());
+        assertTrue(canceledOrderIds.contains(limitOrderResponse.get().orderId()));
     }
 
     @Test
@@ -108,7 +108,7 @@ public class TradingFunctionalityITTest extends ITTestBase {
     public void shouldSetLeverageSuccessfully() {
         Optional<LeverageUpdateResponse> leverageResponse = testInstance.setLeverage("sol_usdt", 5);
         assertTrue(leverageResponse.isPresent());
-        Integer leverage = leverageResponse.get().getLeverage();
+        Integer leverage = leverageResponse.get().leverage();
         assertEquals(Integer.valueOf(5), leverage);
     }
 

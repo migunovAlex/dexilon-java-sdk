@@ -13,7 +13,7 @@ public class AuthenticationITTest extends ITTestBase {
 
     @Test
     public void shouldThrowExceptionTryingToCallCosmosMappingMethodWithoutCreds() {
-        testInstance = new DexilonClientImpl();
+        testInstance = new DexilonClientImplOld();
         DexilonApiException apiException = assertThrows(DexilonApiException.class, () -> {
             testInstance.getCosmosAddressMapping();
         });
@@ -30,7 +30,7 @@ public class AuthenticationITTest extends ITTestBase {
 
     @Test
     public void shouldGetEmptyIfThereIsNoMapping() {
-        testInstance = new DexilonClientImpl(testMetamaskAddress + "_WRONG", testPrivateKey);
+        testInstance = new DexilonClientImplOld(testMetamaskAddress + "_WRONG", testPrivateKey);
         Optional<DexilonBlockchainAddressMappingInfo> cosmosAddress = testInstance.getCosmosAddressMapping();
         assertTrue(cosmosAddress.isEmpty());
     }

@@ -3,27 +3,41 @@ package com.migal.trading.dexilon.client;
 import com.migal.trading.dexilon.client.models.AvailableSymbol;
 import com.migal.trading.dexilon.client.models.OrderBookInfo;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import java.util.Optional;
-import java.util.Set;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+
+@ExtendWith(SpringExtension.class)
+@SpringBootTest(classes = {ITTestsConfiguration.class},
+        webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 class PublicEndpointsITTest {
 
-    private final DexilonClientImpl testInstance = new DexilonClientImpl();
+    @Autowired
+    private DexilonHttpClient testInstance;
+
 
     @Test
     public void shouldReceiveAllSymbols() {
-        Set<AvailableSymbol> symbolsResponse = testInstance.getAllSymbols();
+        Flux<AvailableSymbol> symbolsResponse = testInstance.getAllSymbols();
         assertNotNull(symbolsResponse);
-        assertTrue(symbolsResponse.size() > 0);
+        List<AvailableSymbol> result = symbolsResponse.toStream().toList();
+        assertTrue(result.size() > 0);
     }
 
     @Test
     public void shouldReceiveOrderBook(){
-        Optional<OrderBookInfo> orderBookInfo = testInstance.getOrderBook("sol_usdt");
-        assertTrue(orderBookInfo.isPresent());
+        Mono<OrderBookInfo> orderBookInfo = testInstance.getOrderBook("sol_usdt");
+        OrderBookInfo result = orderBookInfo.block();
+        assertNotNull(result);
     }
 
 }

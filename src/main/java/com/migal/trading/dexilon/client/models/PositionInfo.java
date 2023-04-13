@@ -1,21 +1,5 @@
 package com.migal.trading.dexilon.client.models;
 
-import lombok.Getter;
-
 import java.math.BigDecimal;
 
-@Getter
-public class PositionInfo {
-
-    private String symbol;
-    private String marginMode;
-    private BigDecimal amount;
-    private BigDecimal basePrice;
-    private BigDecimal liquidationPrice;
-    private BigDecimal markPrice;
-    private BigDecimal upl;
-    private Integer uplPercentage;
-    private BigDecimal lockedBalance;
-    private Integer leverage;
-
-}
+public record PositionInfo(String symbol, String marginMode, BigDecimal amount, BigDecimal basePrice, BigDecimal liquidationPrice, BigDecimal markPrice, BigDecimal upl, Integer uplPercentage, BigDecimal lockedBalance, Integer leverage) {}
